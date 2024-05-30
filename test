@@ -1,0 +1,90 @@
+kaggle 安装 Web UI环境 
+一  Installation   安装stable-diffusion-webui
+  update = False
+
+from os import path
+
+%cd /kaggle/working
+!git clone https://gitcode.com/AUTOMATIC1111/stable-diffusion-webui.git
+%cd stable-diffusion-webui
+if update:
+    get_ipython().system('git pull')
+!pip install -r requirements.txt
+
+checkpoints =  '/kaggle/working/stable-diffusion-webui/models/checkpoints'
+link_path = checkpoints + '/temp-models'
+temp_models = '/kaggle/temp/temp-models'
+
+!mkdir /kaggle/temp
+!mkdir $temp_models
+
+if not path.exists(link_path):
+    get_ipython().system(f'ln -s {temp_models} {checkpoints}')
+
+!mamba install openssh -y
+
+  
+
+二   安装模型 stable-diffusion-webui/models/stable-diffusion/
+
+# Install a model in permanent storage
+# Make sure Persistence is set to "Files only" or "Variables and Files"
+model_url = 'https://civitai.com/api/download/models/351306'
+model_name = 'dreamshaperXL.safetensors'
+
+%cd /kaggle/working/stable-diffusion-webui/models/Stable-diffusion
+get_ipython().system(f'wget -O "{model_name}" "{model_url}"')
+
+
+
+
+
+三    通过pinggy启动
+
+# Starting the stable-diffusion-webui with pinggy
+
+from multiprocessing import Process
+import sys
+import time
+
+# 创建一个空的日志文件
+!touch log.txt
+open('log.txt', 'w').close()
+
+def run_app():
+    # 启动 stable-diffusion-webui 并将输出重定向到 log.txt
+    cmd = f"python /kaggle/working/stable-diffusion-webui/webui.py --port 8188 & ssh -o StrictHostKeyChecking=no -p 80 -R0:localhost:8188 a.pinggy.io > log.txt"
+    get_ipython().system(cmd)
+
+def print_url():
+    print("waiting for output")
+    time.sleep(2)  # 等待输出出现在日志文件中
+    sys.stdout.flush()
+    
+    found = False
+    with open('log.txt', 'r') as file:
+        end_word = '.pinggy.link'
+        for line in file:
+            start_index = line.find("http:")
+            if start_index != -1:
+                end_index = line.find(end_word, start_index)
+                if end_index != -1:
+                    print("😁 😁 😁")
+                    print("URL: " + line[start_index:end_index + len(end_word)])
+                    print("😁 😁 😁")
+                    found = True
+    if not found:
+        print_url()
+    else:
+        with open('log.txt', 'r') as file:
+            for line in file:
+                print(line)
+
+# 启动应用程序和 URL 打印进程
+p_app = Process(target=run_app)
+p_url = Process(target=print_url)
+p_app.start()
+p_url.start()
+p_app.join()
+p_url.join()
+
